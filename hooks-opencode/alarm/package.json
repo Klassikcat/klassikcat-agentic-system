@@ -1,0 +1,19 @@
+{
+  "name": "opencode-alarm-hook",
+  "version": "0.1.0",
+  "description": "Telegram alarm plugin for OpenCode session lifecycle and question events",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "check": "node --check index.js && node scripts/smoke-test.mjs"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
