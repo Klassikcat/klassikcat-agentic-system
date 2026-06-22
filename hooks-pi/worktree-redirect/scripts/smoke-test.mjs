@@ -23,6 +23,10 @@ const pi = {
 
 worktreeRedirect(pi);
 
+if (!registeredEvents.includes("input")) {
+  throw new Error(`Expected an 'input' handler for /start-work; got: ${registeredEvents.join(", ")}`);
+}
+
 if (!registeredEvents.includes("tool_call")) {
   throw new Error(`Expected a 'tool_call' handler; got: ${registeredEvents.join(", ")}`);
 }

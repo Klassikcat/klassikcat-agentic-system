@@ -1,5 +1,5 @@
 // ~/.omp/agent/extensions/zz-worktree-redirect.js
-// Redirects approved large/contended/non-default-branch plans into a dedicated git worktree.
+// Hands approved large/contended/non-default-branch plans off to a dedicated git worktree.
 //
 // Disable globally by adding this to ~/.omp/agent/config.yml:
 //   disabledExtensions: [extension-module:zz-worktree-redirect]
@@ -19,8 +19,9 @@ const FILES_THRESHOLD = 6;
 const LINES_THRESHOLD = 250;
 const BRANCH_PREFIX = "omp/plan/";
 const WORKTREE_DIR_SUFFIX = ".worktrees";
-const SOURCE_TOOL = "plan_worktree_redirect";
+const PLAN_APPROVAL_TOOL = "plan_approval";
 const MARKER_REL = ".omp/.plan-worktree";
+const START_WORK_COMMAND = "/start-work";
 const BACKGROUND_TTL_MS = 15 * 60_000;
 
 function currentMode(ctx) {
@@ -260,7 +261,7 @@ async function ensureWorktree(git, state, slug, plan, planText) {
 
 function buildHandoff(wt, decision, state) {
   const lines = [
-    `Plan execution redirected to an isolated git worktree (trigger: ${decision.reasons.join(", ")}).`,
+    `Plan approved. Execution handoff created in an isolated git worktree (trigger: ${decision.reasons.join(", ")}).`,
     "",
     "Created / reused:",
     `  worktree : ${wt.worktreePath}`,
@@ -269,11 +270,15 @@ function buildHandoff(wt, decision, state) {
     "",
     `The current checkout (${state.repoRoot} on ${state.currentBranch}) is left untouched; review and merge ${wt.branch} yourself when done.`,
     "",
-    "Do NOT implement in this session. Continue in the worktree:",
+    "Do NOT implement in this original session. Start a new pi session in the worktree:",
     "",
     `    cd ${JSON.stringify(wt.worktreePath)} && omp`,
     "",
-    `Then implement the plan at ${wt.planRel} in that session.`,
+    "Then run:",
+    "",
+    `    ${START_WORK_COMMAND}`,
+    "",
+    `The ${START_WORK_COMMAND} command loads ${wt.planRel} and starts implementation from the copied plan.`,
   ];
 
   if (state.dirtyCount > 0) {
@@ -286,6 +291,107 @@ function buildHandoff(wt, decision, state) {
   return lines.join("\n");
 }
 
+function approvalHandoffResult(wt, decision, state) {
+  return {
+    content: [{ type: "text", text: buildHandoff(wt, decision, state) }],
+    details: {
+      action: "apply",
+      reason: "Plan approved; execution handoff prepared in a dedicated git worktree.",
+      sourceToolName: PLAN_APPROVAL_TOOL,
+      label: "Plan approved; worktree handoff ready",
+    },
+    isError: false,
+  };
+}
+
+async function fileExists(filePath) {
+  try {
+    const stat = await fs.stat(filePath);
+    return stat.isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function readWorktreeMarker(cwd) {
+  try {
+    return JSON.parse(await fs.readFile(path.join(cwd, MARKER_REL), "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
+function planRelForMarker(marker) {
+  const slug = slugify(marker?.slug);
+  return path.join(".omp", "plans", `${slug}-plan.md`);
+}
+
+export function buildStartWorkPrompt({ cwd, marker, planRel, planExists }) {
+  const planAbs = path.resolve(cwd, planRel);
+  if (!planExists) {
+    return [
+      `The user ran ${START_WORK_COMMAND}, but the copied plan is missing.`,
+      "",
+      `Working directory: ${cwd}`,
+      `Marker: ${MARKER_REL}`,
+      `Expected plan: ${planRel}`,
+      `Absolute plan path: ${planAbs}`,
+      "",
+      "Do not edit files. Tell the user the worktree marker exists but the plan file is missing, and ask them to rerun the original plan approval or provide the correct plan path as `/start-work <plan-path>`.",
+    ].join("\n");
+  }
+
+  return [
+    `The user ran ${START_WORK_COMMAND} inside an OMP plan worktree. Start implementation now.`,
+    "",
+    `Working directory: ${cwd}`,
+    `Marker: ${MARKER_REL}`,
+    `Plan: ${planRel}`,
+    `Branch: ${marker?.branch ?? "(unknown)"}`,
+    `Base SHA: ${marker?.baseSha ?? "(unknown)"}`,
+    "",
+    "Rules:",
+    "1. Read `.omp/.plan-worktree` and the plan file before editing.",
+    "2. Confirm the current checkout is the dedicated worktree and stays on the marker branch when the marker names one.",
+    "3. Implement the plan top-to-bottom in this worktree only.",
+    "4. Do not ask for plan approval again and do not switch back to the original checkout.",
+    "5. Run the plan's verification commands; if a command cannot run, report the exact blocker and run the closest targeted check that still proves behavior.",
+    "",
+    `Begin by reading ${planRel}.`,
+  ].join("\n");
+}
+
+export function buildMissingStartWorkPrompt(cwd) {
+  return [
+    `The user ran ${START_WORK_COMMAND}, but this directory is not an OMP plan worktree.`,
+    "",
+    `Working directory: ${cwd}`,
+    `Missing marker: ${MARKER_REL}`,
+    "",
+    "Do not edit files. Tell the user to open the worktree from the approval handoff (`cd \"<worktree>\" && omp`) and run `/start-work` there.",
+  ].join("\n");
+}
+
+async function handleStartWorkCommand(event, ctx = {}) {
+  const text = String(event?.text ?? "").trim();
+  if (text !== START_WORK_COMMAND && !text.startsWith(`${START_WORK_COMMAND} `)) return;
+
+  const cwd = ctx?.cwd ?? process.cwd();
+  const suppliedPlan = text.slice(START_WORK_COMMAND.length).trim();
+  const marker = await readWorktreeMarker(cwd);
+  if (!marker) return { text: buildMissingStartWorkPrompt(cwd) };
+
+  const planRel = suppliedPlan || planRelForMarker(marker);
+  return {
+    text: buildStartWorkPrompt({
+      cwd,
+      marker,
+      planRel,
+      planExists: await fileExists(path.resolve(cwd, planRel)),
+    }),
+  };
+}
+
 function ensureResolveReason(event) {
   if (event?.toolName !== "resolve" || event.input?.action !== "apply") return;
   if (typeof event.input.reason === "string" && event.input.reason.trim()) return;
@@ -295,6 +401,8 @@ function ensureResolveReason(event) {
 
 export default function worktreeRedirect(pi) {
   pi.setLabel?.("Worktree Redirect");
+
+  pi.on("input", handleStartWorkCommand);
 
   const activity = createAgentActivity();
   const processed = new Map();
@@ -314,7 +422,7 @@ export default function worktreeRedirect(pi) {
       event.toolName !== "resolve" ||
       event.input?.action !== "apply" ||
       event.isError ||
-      event.details?.sourceToolName !== "plan_approval"
+      event.details?.sourceToolName !== PLAN_APPROVAL_TOOL
     ) {
       return;
     }
@@ -340,16 +448,7 @@ export default function worktreeRedirect(pi) {
     const key = planKey(ctx, plan);
     const stored = processed.get(key);
     if (stored) {
-      return {
-        content: [{ type: "text", text: buildHandoff(stored, { ...decision, reasons: stored.reasons }, stored.state) }],
-        details: {
-          action: "discard",
-          reason: "Plan execution redirected to a dedicated git worktree.",
-          sourceToolName: SOURCE_TOOL,
-          label: "Plan execution redirected to worktree",
-        },
-        isError: false,
-      };
+      return approvalHandoffResult(stored, { ...decision, reasons: stored.reasons }, stored.state);
     }
 
     let wt;
@@ -362,17 +461,8 @@ export default function worktreeRedirect(pi) {
 
     const storedInfo = { ...wt, reasons: decision.reasons, state };
     processed.set(key, storedInfo);
-    ctx.ui.notify?.("Plan execution redirected to a dedicated worktree.", "info");
+    ctx.ui.notify?.(`Plan approved; worktree handoff ready. Run ${START_WORK_COMMAND} in the new worktree session.`, "info");
 
-    return {
-      content: [{ type: "text", text: buildHandoff(wt, decision, state) }],
-      details: {
-        action: "discard",
-        reason: "Plan execution redirected to a dedicated git worktree.",
-        sourceToolName: SOURCE_TOOL,
-        label: "Plan execution redirected to worktree",
-      },
-      isError: false,
-    };
+    return approvalHandoffResult(wt, decision, state);
   });
 }

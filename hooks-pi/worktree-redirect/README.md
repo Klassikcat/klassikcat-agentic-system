@@ -1,6 +1,6 @@
 # worktree-redirect (pi extension)
 
-A [pi](https://oh-my-pi) (oh-my-pi / OMP) extension that **redirects risky approved plan execution** into a dedicated git worktree instead of continuing in the current checkout.
+A [pi](https://oh-my-pi) (oh-my-pi / OMP) extension that **hands risky approved plan execution** to a dedicated git worktree, then provides a `/start-work` input command for the new worktree session.
 
 ## What it does
 
@@ -16,23 +16,24 @@ If any trigger fires, it creates or reuses:
 - worktree: `<repo>.worktrees/<slug>`
 - copied plan: `<repo>.worktrees/<slug>/.omp/plans/<slug>-plan.md`
 
-Then it pauses approval with a handoff message telling the agent to stop in the current session and continue with:
+Then it lets approval complete and returns a handoff message telling the agent to stop in the original session and continue with:
 
 ```bash
 cd "<worktree>" && omp
+/start-work
 ```
 
-The current checkout is left untouched. Uncommitted files are not moved; the handoff warns when they exist.
+The `/start-work` input command reads `<worktree>/.omp/.plan-worktree`, locates `.omp/plans/<slug>-plan.md`, and rewrites the prompt into a self-contained execution instruction for the agent in that worktree. The current checkout is left untouched. Uncommitted files are not moved; the handoff warns when they exist.
 
 ## Loop guard
 
-Branches under `omp/plan/*` are skipped. This prevents redirecting again when you continue inside the created worktree.
+Branches under `omp/plan/*` are skipped during approval handoff. This prevents creating another worktree when `/start-work` is run inside the created worktree.
 
 ## Requirements & coupling
 
-- **pi / OMP runtime.** Uses pi's extension API (`pi.on("tool_result")`, `pi.on("tool_call")`, `ctx.sessionManager`, `ctx.hasUI`, `ctx.ui.notify`). Validated against OMP v16.x behavior; re-verify after upgrading.
+- **pi / OMP runtime.** Uses pi's extension API (`pi.on("tool_result")`, `pi.on("tool_call")`, `pi.on("input")`, `ctx.sessionManager`, `ctx.hasUI`, `ctx.ui.notify`). Validated against OMP v16.x behavior; re-verify after upgrading.
 - **git worktree support.** Uses `git worktree add`, `git worktree list --porcelain`, and normal branch refs.
-- **UI plan approval.** The hook only acts when `ctx.hasUI` is true and the source tool is `plan_approval`.
+- **UI plan approval.** The handoff only acts when `ctx.hasUI` is true and the source tool is `plan_approval`.
 
 ## Install
 
@@ -59,6 +60,6 @@ For one repo only, place the file at `<repo>/.omp/extensions/zz-worktree-redirec
 npm run check
 ```
 
-`node --check` validates syntax; `scripts/smoke-test.mjs` asserts the default export registers the expected lifecycle handlers; `scripts/unit-test.mjs` covers pure trigger logic and a runtime-style redirect with temporary git repos.
+`node --check` validates syntax; `scripts/smoke-test.mjs` asserts the default export registers the expected lifecycle handlers; `scripts/unit-test.mjs` covers pure trigger logic, runtime-style worktree creation, apply-preserving handoff results, and `/start-work` input rewriting with temporary git repos.
 
-> Runtime behavior inside the interactive pi approval UI still needs manual agent QA after OMP upgrades because the extension relies on the same `plan_approval` discard-override contract as `auto-plan-review`.
+> Runtime behavior inside the interactive pi approval UI still needs manual agent QA after OMP upgrades because the extension relies on the `plan_approval` tool-result contract and pi's input-rewrite API.

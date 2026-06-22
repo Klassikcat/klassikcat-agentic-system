@@ -30,7 +30,7 @@ async function initRepo(prefix, branch = "main") {
   return tmp;
 }
 
-async function fireApproval({ cwd, planText, title = "Runtime Redirect", branchEntries = [{ type: "mode_change", mode: "plan" }] }) {
+async function fireApproval({ cwd, planText, title = "Runtime Redirect", branchEntries = [{ type: "mode_change", mode: "plan" }], repeat = false }) {
   const artifacts = await fs.mkdtemp(path.join(os.tmpdir(), "wt-artifacts-"));
   const local = path.join(artifacts, "local");
   await fs.mkdir(local, { recursive: true });
@@ -73,12 +73,38 @@ async function fireApproval({ cwd, planText, title = "Runtime Redirect", branchE
     details: { sourceToolName: "plan_approval" },
   };
 
+  async function collectResults() {
+    const results = [];
+    for (const fn of handlers.get("tool_result") ?? []) {
+      const result = await fn(event, ctx);
+      if (result) results.push(result);
+    }
+    return results;
+  }
+
+  const results = await collectResults();
+  const repeatedResults = repeat ? await collectResults() : [];
+  return { results, repeatedResults, notifications, artifacts };
+}
+
+async function fireInput({ cwd, text = "/start-work" }) {
+  const handlers = new Map();
+  const pi = {
+    setLabel() { },
+    on(name, fn) {
+      const list = handlers.get(name) ?? [];
+      list.push(fn);
+      handlers.set(name, list);
+    },
+  };
+  worktreeRedirect(pi);
+
   const results = [];
-  for (const fn of handlers.get("tool_result") ?? []) {
-    const result = await fn(event, ctx);
+  for (const fn of handlers.get("input") ?? []) {
+    const result = await fn({ text }, { cwd });
     if (result) results.push(result);
   }
-  return { results, notifications, artifacts };
+  return results;
 }
 
 const tmp = await initRepo("wt-redirect", "main");
@@ -166,18 +192,37 @@ try {
 const e2e = await initRepo("wt-runtime", "feat/demo");
 try {
   const e2eRoot = path.resolve(e2e);
-  const { results } = await fireApproval({ cwd: e2eRoot, planText: "Add demo.txt\n" });
+  const { results, repeatedResults } = await fireApproval({ cwd: e2eRoot, planText: "Add demo.txt\n", repeat: true });
   assert.equal(results.length, 1);
-  assert.match(results[0].content[0].text, /Plan execution redirected/);
+  assert.match(results[0].content[0].text, /Plan approved\. Execution handoff created/);
   assert.match(results[0].content[0].text, /trigger: feature-branch/);
-  assert.equal(results[0].details.action, "discard");
-  assert.equal(results[0].details.sourceToolName, "plan_worktree_redirect");
+  assert.match(results[0].content[0].text, /\/start-work/);
+  assert.equal(results[0].details.action, "apply");
+  assert.equal(results[0].details.sourceToolName, "plan_approval");
+  assert.equal(repeatedResults.length, 1);
+  assert.equal(repeatedResults[0].details.action, "apply");
+  assert.equal(repeatedResults[0].details.sourceToolName, "plan_approval");
 
   const worktreePath = path.join(path.dirname(e2eRoot), `${path.basename(e2eRoot)}.worktrees`, "runtime-redirect");
   assert.equal((await git(e2eRoot, ["branch", "--list", "omp/plan/runtime-redirect"])).includes("omp/plan/runtime-redirect"), true);
   assert.equal((await git(e2eRoot, ["worktree", "list", "--porcelain"])).includes(worktreePath), true);
   assert.equal(await fs.readFile(path.join(worktreePath, ".omp", "plans", "runtime-redirect-plan.md"), "utf8"), "Add demo.txt\n");
   await fs.access(path.join(worktreePath, ".omp", ".plan-worktree"));
+  const startWorkResult = await fireInput({ cwd: worktreePath });
+  assert.equal(startWorkResult.length, 1);
+  assert.match(startWorkResult[0].text, /Start implementation now/);
+  assert.match(startWorkResult[0].text, /Plan: \.omp\/plans\/runtime-redirect-plan\.md/);
+
+  const suppliedPlanResult = await fireInput({ cwd: worktreePath, text: "/start-work .omp/plans/runtime-redirect-plan.md" });
+  assert.equal(suppliedPlanResult.length, 1);
+  assert.match(suppliedPlanResult[0].text, /Begin by reading \.omp\/plans\/runtime-redirect-plan\.md/);
+
+  const missingMarkerResult = await fireInput({ cwd: e2eRoot });
+  assert.equal(missingMarkerResult.length, 1);
+  assert.match(missingMarkerResult[0].text, /not an OMP plan worktree/);
+
+  const passThroughResult = await fireInput({ cwd: worktreePath, text: "/not-start-work" });
+  assert.equal(passThroughResult.length, 0);
   assert.equal(await git(e2eRoot, ["status", "--porcelain"]), "");
 } finally {
   await fs.rm(e2e, { recursive: true, force: true });
