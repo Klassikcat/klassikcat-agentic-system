@@ -10,6 +10,7 @@ Reusable hooks, plugins, and agents for the OpenCode and pi (oh-my-pi) coding ag
 - `agents-opencode/prometheus`: Prometheus subagent definition wired to the ACP bridge.
 - `agents-opencode/atlas`: Atlas subagent definition wired to the ACP bridge.
 - `agents-opencode/sisyphus`: Sisyphus subagent definition wired to the ACP bridge.
+- `agents-opencode/advisor-planner`: Advisor planner subagent that calls Claude CLI to produce a planning draft for Prometheus to refine into a final plan.
 - `hooks-opencode/alarm`: Telegram alarm plugin for OpenCode session lifecycle and question events.
 - `hooks-opencode/trufflehog-guard`: Read-time credential guard that scans only the requested file with trufflehog before allowing `Read`.
 
@@ -29,3 +30,4 @@ Reusable hooks, plugins, and agents for the OpenCode and pi (oh-my-pi) coding ag
 - `agents-pi/agents/code-reviewer`: READ-ONLY completion reviewer agent used by the completion-gate flow.
 - `agents-pi/agents/document-specialist`: READ-ONLY external documentation lookup agent.
 - `agents-pi/agents/test-author`, `test-runner`, `coverage-judge`: Native pi tester roles generated from `agents-tester/roles/`.
+- `agents-pi/skills/omo-advisor-agent`: Advisor skill that calls Claude CLI to produce a planning draft for the omp main agent to refine.
