@@ -49,3 +49,29 @@ test("unknown roles fail before provider execution", async () => {
     /Unknown role: unknown/,
   );
 });
+
+test("runBridge with advisor role produces advisory draft prompt", async () => {
+  const result = await runBridge({
+    role: "advisor",
+    prompt: "plan feature X",
+    providers: "claude",
+    providerFactory: fakeProvider,
+  });
+  assert.equal(result.results.length, 1);
+  assert.match(result.request.prompt, /ADVISORY DRAFT/);
+});
+
+test("runBridge with advisor role and single provider only calls that provider", async () => {
+  const seen = [];
+  const result = await runBridge({
+    role: "advisor",
+    prompt: "plan feature X",
+    providers: "claude",
+    providerFactory(name) {
+      seen.push(name);
+      return fakeProvider(name);
+    },
+  });
+  assert.deepEqual(seen, ["claude"]);
+  assert.equal(result.results.length, 1);
+});
