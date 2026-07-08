@@ -12,6 +12,7 @@ Pi intentionally does not ship built-in subagents. This package models subagent 
 - `omo-verification-agent` — run tests, checks, and QA scenarios
 - `omo-review-agent` — independent review against plan, quality, and scope
 - `omo-orchestration-agent` — coordinate the full investigate → plan → execute → verify → review loop
+- `omo-advisor-agent` — call Claude CLI to produce a planning draft (advisory plan) for the omp main agent to refine
 
 ## Agents
 
@@ -34,6 +35,7 @@ Default role mapping:
 | orchestration | OpenCode | `opencode run --print <prompt>` |
 | planning | Claude Code | `claude -p <prompt> --output-format json --max-turns 0` |
 | review | Codex | `codex exec <prompt> --json --sandbox read-only` |
+| advisor | Claude Code | `claude -p <prompt> --output-format json --max-turns 3` (OMO_CLAUDE_MAX_TURNS) |
 
 This is an adapter layer, not a claim that every provider speaks the same ACP protocol. Each provider uses its practical headless CLI interface.
 
