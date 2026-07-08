@@ -11,7 +11,7 @@ export class ClaudeProvider extends ProviderAdapter {
     const command = this.command ?? process.env.OMC_ACP_CLAUDE_PATH ?? "claude";
     const args = process.env.OMC_ACP_CLAUDE_ARGS
       ? parseArgsTemplate(process.env.OMC_ACP_CLAUDE_ARGS, request.prompt)
-      : ["-p", request.prompt, "--output-format", "json", "--max-turns", "0"];
+      : ["-p", request.prompt, "--output-format", "json", "--max-turns", process.env.OMC_ACP_CLAUDE_MAX_TURNS ?? "0"];
     return { command, args };
   }
 
