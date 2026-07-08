@@ -19,6 +19,7 @@ Roles:
 - `prometheus`: planning, constraints, acceptance criteria, risk review
 - `atlas`: system context, architecture, dependency impact
 - `sisyphus`: execution readiness and completion verification
+- `advisor`: planning draft (advisory plan) production for main agent refinement
 
 ## Configuration
 
@@ -28,6 +29,7 @@ OMC_ACP_PI_PATH=pi
 OMC_ACP_CODEX_PATH=codex
 OMC_ACP_GEMINI_PATH=gemini
 OMC_ACP_TIMEOUT_MS=30000
+OMC_ACP_CLAUDE_MAX_TURNS=3  # default 0; set to 3+ for advisor role to allow codebase exploration
 ```
 
 Argument templates can be overridden with `{prompt}`:

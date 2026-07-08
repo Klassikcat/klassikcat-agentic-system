@@ -61,3 +61,28 @@ test("provider arg templates can override defaults", () => {
     else process.env.OMC_ACP_PI_ARGS = previous;
   }
 });
+
+test("claude provider uses OMC_ACP_CLAUDE_MAX_TURNS env when set", () => {
+  const previous = process.env.OMC_ACP_CLAUDE_MAX_TURNS;
+  process.env.OMC_ACP_CLAUDE_MAX_TURNS = "5";
+  try {
+    const provider = new ClaudeProvider({ command: "claude-test" });
+    const inv = provider.buildInvocation({ prompt: "test" });
+    assert.deepEqual(inv.args, ["-p", "test", "--output-format", "json", "--max-turns", "5"]);
+  } finally {
+    if (previous === undefined) delete process.env.OMC_ACP_CLAUDE_MAX_TURNS;
+    else process.env.OMC_ACP_CLAUDE_MAX_TURNS = previous;
+  }
+});
+
+test("claude provider defaults to --max-turns 0 when env not set", () => {
+  const previous = process.env.OMC_ACP_CLAUDE_MAX_TURNS;
+  delete process.env.OMC_ACP_CLAUDE_MAX_TURNS;
+  try {
+    const provider = new ClaudeProvider({ command: "claude-test" });
+    const inv = provider.buildInvocation({ prompt: "test" });
+    assert.deepEqual(inv.args, ["-p", "test", "--output-format", "json", "--max-turns", "0"]);
+  } finally {
+    if (previous !== undefined) process.env.OMC_ACP_CLAUDE_MAX_TURNS = previous;
+  }
+});

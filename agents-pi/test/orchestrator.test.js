@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runRole, runWorkflow } from "../src/orchestrator.js";
+import { ROLES } from "../src/orchestrator.js";
+import { DEFAULT_ROLE_PROVIDER } from "../src/providers/index.js";
 
 function fakeProvider(name) {
   return {
@@ -39,4 +41,19 @@ test("runWorkflow calls planning before review", async () => {
   assert.equal(calls[0][0], "planning");
   assert.equal(calls[1][0], "review");
   assert.match(calls[1][1], /Planning Result/);
+});
+
+test("runRole offloads advisor role to supplied provider", async () => {
+  const result = await runRole({ role: "advisor", prompt: "plan feature", provider: fakeProvider("claude") });
+  assert.equal(result.name, "claude");
+  assert.equal(result.status, "success");
+  assert.match(result.output, /advisor/);
+});
+
+test("advisor role is in ROLES array", () => {
+  assert.ok(ROLES.includes("advisor"));
+});
+
+test("DEFAULT_ROLE_PROVIDER maps advisor to claude", () => {
+  assert.equal(DEFAULT_ROLE_PROVIDER.advisor, "claude");
 });

@@ -29,3 +29,28 @@ test("opencode provider builds orchestration invocation", () => {
     args: ["run", "--print", "coordinate"],
   });
 });
+
+test("claude provider uses OMO_CLAUDE_MAX_TURNS env when set", () => {
+  const previous = process.env.OMO_CLAUDE_MAX_TURNS;
+  process.env.OMO_CLAUDE_MAX_TURNS = "5";
+  try {
+    const provider = new ClaudeProvider({ command: "claude-test" });
+    const inv = provider.buildInvocation({ prompt: "test" });
+    assert.deepEqual(inv.args, ["-p", "test", "--output-format", "json", "--max-turns", "5"]);
+  } finally {
+    if (previous === undefined) delete process.env.OMO_CLAUDE_MAX_TURNS;
+    else process.env.OMO_CLAUDE_MAX_TURNS = previous;
+  }
+});
+
+test("claude provider defaults to --max-turns 0 when OMO_CLAUDE_MAX_TURNS not set", () => {
+  const previous = process.env.OMO_CLAUDE_MAX_TURNS;
+  delete process.env.OMO_CLAUDE_MAX_TURNS;
+  try {
+    const provider = new ClaudeProvider({ command: "claude-test" });
+    const inv = provider.buildInvocation({ prompt: "test" });
+    assert.deepEqual(inv.args, ["-p", "test", "--output-format", "json", "--max-turns", "0"]);
+  } finally {
+    if (previous !== undefined) process.env.OMO_CLAUDE_MAX_TURNS = previous;
+  }
+});

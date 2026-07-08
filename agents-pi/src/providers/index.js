@@ -23,4 +23,5 @@ export const DEFAULT_ROLE_PROVIDER = {
   orchestration: "opencode",
   planning: "claude",
   review: "codex",
+  advisor: "claude",
 };

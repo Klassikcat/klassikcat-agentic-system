@@ -14,7 +14,7 @@ export class ClaudeProvider extends ProviderAdapter {
     const command = this.command ?? process.env.OMO_CLAUDE_PATH ?? "claude";
     return {
       command,
-      args: ["-p", request.prompt, "--output-format", "json", "--max-turns", "0"],
+      args: ["-p", request.prompt, "--output-format", "json", "--max-turns", process.env.OMO_CLAUDE_MAX_TURNS ?? "0"],
     };
   }
 

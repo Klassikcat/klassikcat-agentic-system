@@ -4,7 +4,7 @@ import { formatResult, formatWorkflow, runRole, runWorkflow } from "./orchestrat
 
 function usage() {
   return `Usage:
-  node src/cli.js --role <orchestration|planning|review> --prompt <text> [--target <file>] [--provider <name>] [--timeout <ms>]
+  node src/cli.js --role <orchestration|planning|review|advisor> --prompt <text> [--target <file>] [--provider <name>] [--timeout <ms>]
   node src/cli.js --workflow omo --prompt <text> [--target <file>] [--timeout <ms>]
 
 Defaults:

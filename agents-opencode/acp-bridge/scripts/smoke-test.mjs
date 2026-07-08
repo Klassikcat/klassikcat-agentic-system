@@ -32,3 +32,24 @@ assert.match(result.stdout, /## Gemini/);
 assert.match(result.stdout, /## Summary/);
 
 console.log("smoke ok");
+
+const advisorResult = spawnSync(process.execPath, [
+  "src/cli.js",
+  "--role",
+  "advisor",
+  "--prompt",
+  "smoke",
+  "--providers",
+  "claude",
+], {
+  cwd: new URL("..", import.meta.url),
+  env,
+  encoding: "utf8",
+});
+
+assert.equal(advisorResult.status, 0, advisorResult.stderr);
+assert.match(advisorResult.stdout, /# OMC ACP Bridge Report/);
+assert.match(advisorResult.stdout, /Role: advisor/);
+assert.match(advisorResult.stdout, /## Claude Code/);
+
+console.log("advisor smoke ok");

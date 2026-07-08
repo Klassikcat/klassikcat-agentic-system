@@ -3,7 +3,7 @@ import { DEFAULT_ROLE_PROVIDER, createProvider } from "./providers/index.js";
 import { STATUS_SUCCESS } from "./providers/base.js";
 import { buildRolePrompt } from "./prompts.js";
 
-export const ROLES = ["orchestration", "planning", "review"];
+export const ROLES = ["orchestration", "planning", "review", "advisor"];
 
 export async function buildRequest({ role, prompt, targetPath }) {
   if (!prompt) throw new Error("prompt is required");
