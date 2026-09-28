@@ -1,0 +1,12 @@
+{
+  "name": "native-v2-agents",
+  "version": "0.1.0",
+  "description": "Lean native OpenCode V2 port of OMO Prometheus + subagents (explore, librarian, metis, momus, oracle, multimodal-looker, builder) with a plan_graph DAG delegation tool.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node bin/generate-agents.mjs",
+    "check": "node --check lib/dag.mjs && node --check lib/graph-tool.mjs && node --check plugin/index.js && node --check pi-extension/plan-graph.js && node bin/generate-agents.mjs --check && node scripts/install.mjs --check && node --test",
+    "test": "node --test"
+  }
+}

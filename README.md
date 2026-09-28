@@ -10,6 +10,7 @@ Reusable hooks, plugins, and agents for the OpenCode and pi (oh-my-pi) coding ag
 - `agents-opencode/prometheus`: Prometheus subagent definition wired to the ACP bridge.
 - `agents-opencode/atlas`: Atlas subagent definition wired to the ACP bridge.
 - `agents-opencode/sisyphus`: Sisyphus subagent definition wired to the ACP bridge.
+- `agents-opencode/native-v2`: Lean OMO planning stack for OpenCode V2 and pi — 8 roles (prometheus + explore/librarian/metis/momus/oracle/multimodal-looker/builder) generated from one source, a `plan_graph` DAG tool with delegation guard, and JSON-side model config (builder: `openai/gpt-6-luna#max`).
 - `hooks-opencode/alarm`: Telegram alarm plugin for OpenCode session lifecycle and question events.
 - `hooks-opencode/trufflehog-guard`: Read-time credential guard that scans only the requested file with trufflehog before allowing `Read`.
 
