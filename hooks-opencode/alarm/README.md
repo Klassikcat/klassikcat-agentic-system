@@ -4,13 +4,15 @@ Telegram notifications for local OpenCode server events.
 
 ## What it sends
 
-- `session.idle` after an active step: completed alert
+- `session.next.step.ended` with normal finish: completed alert **only when the agent is in the completion list** (default: `prometheus`, `atlas`)
 - `session.next.step.failed`: failed or aborted alert
 - `session.error`: failed or aborted alert
 - `session.next.step.ended` with abort/cancel finish: aborted alert
 - `question.asked`: question waiting alert with the first question and option labels
 
 Subagent session lifecycle alerts are ignored by default. Set `OPENCODE_TELEGRAM_NOTIFY_SUBAGENTS=true` to include them.
+
+Completion agents are configurable via `OPENCODE_TELEGRAM_COMPLETION_AGENTS` (comma-separated, default: `prometheus,atlas`).
 
 ## Install
 

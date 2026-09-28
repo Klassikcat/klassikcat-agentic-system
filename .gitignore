@@ -3,6 +3,7 @@ node_modules/
 *.env
 !.env.example
 .DS_Store
+__pycache__/
 
 # OMC / OMP orchestration working state (not part of the shareable artifacts)
 .omc/
