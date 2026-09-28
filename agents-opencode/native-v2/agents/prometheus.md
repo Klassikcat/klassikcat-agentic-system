@@ -1,5 +1,5 @@
 ---
-description: undefined
+description: "undefined"
 mode: primary
 permissions:
   - action: edit

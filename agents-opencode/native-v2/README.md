@@ -85,6 +85,7 @@ OMP version caveats).
 npm test            # 34 tests: DAG engine, graph tool, guards, structure, install
 npm run check       # syntax + generation drift + bundle integrity + tests
 npm run generate    # regenerate agents/ + generated-pi/ from roles/
+node scripts/smoke.mjs   # live host: registration, modes, models, permissions, skill, plugin
 ```
 
 The OMO plugin (oh-my-openagent) can stay installed; these definitions are

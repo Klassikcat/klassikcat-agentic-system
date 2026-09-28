@@ -89,6 +89,11 @@ function grantFor(platform, id) {
   return grants;
 }
 
+/** YAML double-quoted scalar: survives colons, quotes, and backslashes. */
+function yamlQuote(s) {
+  return `"${String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
 export const PLATFORMS = {
   opencode: {
     outPath(id) {
@@ -98,7 +103,7 @@ export const PLATFORMS = {
       const grant = grantFor(OPENCODE, meta.id);
       const lines = [
         "---",
-        `description: ${meta.descriptionOpencode}`,
+        `description: ${yamlQuote(meta.descriptionOpencode)}`,
         `mode: ${grant.mode}`,
       ];
       if (grant.permissions?.length) {
@@ -122,7 +127,7 @@ export const PLATFORMS = {
       return [
         "---",
         `name: ${meta.id}`,
-        `description: "${meta.descriptionPi}"`,
+        `description: ${yamlQuote(meta.descriptionPi)}`,
         `tools: ${grant.tools}`,
         `model: ${grant.model}`,
         `thinking-level: ${grant.thinkingLevel}`,

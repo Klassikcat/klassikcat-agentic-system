@@ -1,5 +1,5 @@
 ---
-description: undefined
+description: "undefined"
 mode: subagent
 permissions:
   - action: edit

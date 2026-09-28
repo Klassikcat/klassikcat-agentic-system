@@ -1,6 +1,6 @@
 ---
 name: explore
-description: "Fast codebase search. Answers "Where is X?", "Which file has Y?" with file:line evidence; states what was not found."
+description: "Fast codebase search. Answers \"Where is X?\", \"Which file has Y?\" with file:line evidence; states what was not found."
 tools: read, search, find
 model: pi/smol
 thinking-level: low
