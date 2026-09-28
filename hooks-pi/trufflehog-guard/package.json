@@ -1,0 +1,12 @@
+{
+	"name": "pi-trufflehog-guard-extension",
+	"version": "0.1.0",
+	"description": "pi extension: blocks read/bash tool calls that would expose credential files (shared trufflehog-guard.py core)",
+	"type": "module",
+	"scripts": {
+		"check": "node --check guard.mjs && node scripts/smoke-test.mjs"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}
