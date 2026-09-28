@@ -147,10 +147,26 @@ function buildPrompt(c, project) {
   return c.prompt.replace(/eval\/fixtures\//g, path.join(pkgRoot, "eval/fixtures") + path.sep);
 }
 
+/** Auto-approve pending permission requests on the ISOLATED eval server. */
+async function autoApprove(base) {
+  try {
+    const reqs = (await api(base, "get", "/api/permission/request")).data ?? [];
+    for (const r of reqs) {
+      await api(base, "post", `/api/session/${r.sessionID}/permission/${r.id}/reply`, {
+        decision: "always",
+      }).catch(() => {});
+      console.log(`  auto-approved: ${r.action} ${(r.resources ?? [])[0] ?? ""}`);
+    }
+  } catch {
+    /* non-fatal */
+  }
+}
+
 /** Poll until the session looks finished: last assistant has tokens + stop finish, or an idle marker. */
 async function waitForDone(base, sid, timeoutMs) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
+    await autoApprove(base); // e.g. looker reading repo fixture paths (external_directory)
     let msgs = [];
     try {
       msgs = (await api(base, "get", `/api/session/${sid}/context`)).data ?? [];
