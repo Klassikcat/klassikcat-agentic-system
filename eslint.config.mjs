@@ -41,6 +41,8 @@ export default [
       ".omc/**",
       ".omo/**",
       ".serverless/**",
+      // Throwaway CommonJS eval fixtures (intentionally not ESM).
+      "agents-opencode/native-v2/eval/fixtures/**",
     ],
   },
 
