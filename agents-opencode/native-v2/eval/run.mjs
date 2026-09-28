@@ -247,12 +247,11 @@ async function executeSuite() {
       try {
         const created = await api(base, "post", "/api/session", { title: `eval-${c.id}-${arm}` });
         const sid = created.data?.id ?? created.id;
-        if (c.role !== "prometheus") {
-          await api(base, "post", `/api/session/${sid}/agent`, { agent: c.role });
-          // switchAgent keeps the session model; pin the eval model explicitly
-          // so both arms run the identical model (rubric.md).
-          await api(base, "post", `/api/session/${sid}/model`, { model: parseModelRef(builderModel) });
-        }
+        // Both agent AND model must be pinned per trial: switchAgent keeps the
+        // creation-time session model, and sessions default to the user's
+        // global model (rubric: identical models across both arms).
+        await api(base, "post", `/api/session/${sid}/agent`, { agent: c.role });
+        await api(base, "post", `/api/session/${sid}/model`, { model: parseModelRef(builderModel) });
         await api(base, "post", `/api/session/${sid}/prompt`, { text: prompt });
         await waitForDone(base, sid, 10 * 60_000);
         const ctx = await api(base, "get", `/api/session/${sid}/context`);
