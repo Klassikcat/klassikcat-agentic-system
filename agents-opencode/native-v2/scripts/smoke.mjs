@@ -22,6 +22,10 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROSTER = ["prometheus", "explore", "librarian", "metis", "momus", "oracle", "multimodal-looker", "builder"];
+// Port servers since opencode v2.0.18 restart with password auth; pin one for
+// both the server and the `opencode api --server` client calls below.
+const SERVER_PASSWORD = `native-v2-${process.pid}`;
+process.env.OPENCODE_PASSWORD = SERVER_PASSWORD;
 
 const keep = process.argv.includes("--keep");
 // Under $HOME: /tmp locations do not boot config discovery on this host.
@@ -51,6 +55,7 @@ const server = spawn("opencode", ["serve", "--port", String(port)], {
   cwd: project,
   stdio: "ignore",
   detached: true,
+  env: { ...process.env, OPENCODE_PASSWORD: SERVER_PASSWORD },
 });
 const base = `http://127.0.0.1:${port}`;
 

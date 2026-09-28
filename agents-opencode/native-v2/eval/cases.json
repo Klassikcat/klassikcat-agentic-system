@@ -2,8 +2,9 @@
   "$comment": "18 paired A/B cases: 14 role normal+negative, 2 builder-specific, 2 prometheus flows. baselineDir prompts are upstream v5.0.1 extracts (see rubric.md); candidate prompts come from ../agents/<role>.md. builder arm runs openai/gpt-6-luna#max in BOTH arms.",
   "cases": [
     { "id": "explore-normal", "role": "explore", "kind": "normal",
-      "prompt": "In this repository, find where CLI subcommands are registered and dispatched. Return the file paths and the decisive lines.",
-      "expect": { "must_mention": ["bin/", "subcommand"], "files_cited_min": 1, "not_found_section": false } },
+      "prompt": "In this project, find where `square` is implemented and how it is exported for consumers. Return the file paths and the decisive lines.",
+      "fixture": "mini-project",
+      "expect": { "must_mention": ["src/math.js", "square"], "files_cited_min": 1, "not_found_section": false } },
     { "id": "explore-negative", "role": "explore", "kind": "negative",
       "prompt": "Find where this repo implements Kerberos authentication (it does not).",
       "expect": { "must_state_missing": true, "no_fabricated_paths": true } },

@@ -5,6 +5,7 @@
  *
  *   node eval/run.mjs --dry-run                 (default; free: validates cases, baselines, fixtures)
  *   node eval/run.mjs --execute --max-runs 4 --max-cost-usd 2 --out <dir>   (paid; both params REQUIRED)
+ *   --builder-model provider/model[#variant]    (default openai/gpt-6-luna#max; applies to BOTH arms)
  *
  * Suites: pilot = 2 selected cases × arms; confirm = all 18 cases × arms.
  * Arms:   baseline swaps agents/<role>.md with eval/baselines/<role>.md; lean
@@ -23,6 +24,10 @@ const run = promisify(execFile);
 const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROSTER = ["prometheus", "explore", "librarian", "metis", "momus", "oracle", "multimodal-looker", "builder"];
 const PILOT_CASES = ["explore-normal", "builder-simple"];
+// Port servers since opencode v2.0.18 restart with password auth; pin one for
+// both the server and the `opencode api --server` client calls below.
+const SERVER_PASSWORD = `native-v2-eval-${process.pid}`;
+process.env.OPENCODE_PASSWORD = SERVER_PASSWORD;
 
 const arg = (n) => {
   const i = process.argv.indexOf(`--${n}`);
@@ -33,6 +38,7 @@ const flag = (n) => process.argv.includes(`--${n}`);
 const execute = flag("execute");
 const suite = arg("suite") ?? "pilot";
 const armSel = arg("arm") ?? "both";
+const builderModel = arg("builder-model") ?? "openai/gpt-6-luna#max";
 const maxRuns = Number(arg("max-runs") ?? 0);
 const maxCost = Number(arg("max-cost-usd") ?? 0);
 const outDir = path.resolve(arg("out") ?? path.join("/tmp/opencode/native-v2-eval", new Date().toISOString().replace(/[:.]/g, "-")));
@@ -84,8 +90,10 @@ function validate() {
 async function api(base, method, p, data) {
   const args = ["api", "--server", base, method, p];
   if (data) args.push("--data", JSON.stringify(data));
-  const { stdout } = await run("opencode", args);
-  return JSON.parse(stdout);
+  const { stdout } = await run("opencode", args, { maxBuffer: 64 * 1024 * 1024 });
+  const body = stdout.trim();
+  if (!body) return null; // 204-style endpoints: switchAgent, wait, reload
+  return JSON.parse(body);
 }
 
 async function collectTree(base, rootID) {
@@ -124,6 +132,39 @@ async function collectTree(base, rootID) {
   return { sessions: tree, tokens, cost, toolCalls, models: [...models], complete };
 }
 
+function parseModelRef(ref) {
+  const [providerID, rest] = String(ref).split("/");
+  const [id, variant] = (rest ?? "").split("#");
+  return variant ? { providerID, id, variant } : { providerID, id };
+}
+
+/** Point fixture references at the throwaway project, not the repo originals. */
+function buildPrompt(c, project) {
+  if (c.fixture?.startsWith("mini-project")) {
+    const abs = path.join(pkgRoot, "eval/fixtures", c.fixture);
+    return c.prompt.split(abs).join(project).split(`eval/fixtures/${c.fixture}`).join(project);
+  }
+  return c.prompt.replace(/eval\/fixtures\//g, path.join(pkgRoot, "eval/fixtures") + path.sep);
+}
+
+/** Poll until the session looks finished: last assistant has tokens + stop finish, or an idle marker. */
+async function waitForDone(base, sid, timeoutMs) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    let msgs = [];
+    try {
+      msgs = (await api(base, "get", `/api/session/${sid}/context`)).data ?? [];
+    } catch {
+      await new Promise((r) => setTimeout(r, 5000));
+      continue;
+    }
+    const last = msgs[msgs.length - 1];
+    if (msgs.some((m) => m.type === "idle")) return;
+    if (last?.type === "assistant" && last.tokens && (last.finish === undefined || last.finish === "stop" || last.finish === "length")) return;
+    await new Promise((r) => setTimeout(r, 8000));
+  }
+}
+
 async function executeSuite() {
   if (!(maxRuns > 0) || !(maxCost > 0)) {
     die("refusing paid execution: --execute requires explicit --max-runs N and --max-cost-usd X (budget gate, eval/rubric.md)");
@@ -142,6 +183,7 @@ async function executeSuite() {
   const results = { suite, frozen: { cases: selected.map((c) => c.id), arms }, trials: [], budget: { maxRuns, maxCost }, spent: 0, status: "incomplete" };
 
   const project = fs.mkdtempSync(path.join(os.homedir(), ".native-v2-eval-"));
+  run("git", ["init", "-q", project]).catch(() => {}); // project-root detection
   const port = 14200 + (process.pid % 300);
   const oc = path.join(project, ".opencode");
   const { PLATFORMS, parseRole } = await import(
@@ -162,12 +204,17 @@ async function executeSuite() {
       JSON.stringify({
         $schema: "https://opencode.ai/config.json",
         plugins: [path.join(pkgRoot, "plugin")],
-        agents: { builder: { model: "openai/gpt-6-luna#max" } },
+        agents: { builder: { model: builderModel } },
       }, null, 2),
     );
   };
 
-  const server = spawn("opencode", ["serve", "--port", String(port)], { cwd: project, stdio: "ignore", detached: true });
+  const server = spawn("opencode", ["serve", "--port", String(port)], {
+    cwd: project,
+    stdio: "ignore",
+    detached: true,
+    env: { ...process.env, OPENCODE_PASSWORD: SERVER_PASSWORD },
+  });
   const base = `http://127.0.0.1:${port}`;
   process.on("exit", () => {
     try { process.kill(-server.pid, "SIGTERM"); } catch { /* gone */ }
@@ -195,14 +242,19 @@ async function executeSuite() {
         fs.copyFileSync(path.join(pkgRoot, "eval/fixtures", `${c.fixture}.md`), path.join(project, `.omo/plans/${name}`));
       }
       const t0 = Date.now();
-      const prompt = c.prompt.replace(/eval\/fixtures\//g, path.join(pkgRoot, "eval/fixtures/") + "");
+      const prompt = buildPrompt(c, project);
       const trial = { case: c.id, role: c.role, arm, expect: c.expect };
       try {
         const created = await api(base, "post", "/api/session", { title: `eval-${c.id}-${arm}` });
         const sid = created.data?.id ?? created.id;
-        if (c.role !== "prometheus") await api(base, "post", `/api/session/${sid}/agent`, { agent: c.role });
+        if (c.role !== "prometheus") {
+          await api(base, "post", `/api/session/${sid}/agent`, { agent: c.role });
+          // switchAgent keeps the session model; pin the eval model explicitly
+          // so both arms run the identical model (rubric.md).
+          await api(base, "post", `/api/session/${sid}/model`, { model: parseModelRef(builderModel) });
+        }
         await api(base, "post", `/api/session/${sid}/prompt`, { text: prompt });
-        await api(base, "post", `/api/experimental/session/${sid}/wait`).catch(() => {});
+        await waitForDone(base, sid, 10 * 60_000);
         const ctx = await api(base, "get", `/api/session/${sid}/context`);
         trial.transcript = (ctx.data ?? []).map((m) => ({ type: m.type, text: textOf(m) })).filter((m) => m.text);
         Object.assign(trial, await collectTree(base, sid));
