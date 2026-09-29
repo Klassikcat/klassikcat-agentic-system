@@ -16,7 +16,7 @@
  *
  * Usage:
  *   node scripts/install.mjs --platform opencode --target ~/.config/opencode [--dry-run] [--force]
- *   node scripts/install.mjs --platform pi --target ~/.omp/agent/agents [--dry-run] [--force]
+ *   node scripts/install.mjs --platform pi --target ~/.pi/agent/agents [--pi-extensions ~/.pi/agent/extensions] [--dry-run] [--force]
  *   node scripts/install.mjs --check   # local bundle integrity only
  */
 import fs from "node:fs";
@@ -60,6 +60,8 @@ function install(platform, target, { dryRun, force }) {
     add("skills/ulw-plan", path.join(target, "skills", "ulw-plan"));
   } else if (platform === "pi") {
     for (const id of ROSTER) add(`generated-pi/${id}.md`, path.join(target, `${id}.md`));
+    const extDir = val("pi-extensions");
+    if (extDir) add("pi-extension", path.join(extDir, "plan-graph"));
   } else {
     fail(`unknown platform ${platform}`);
   }
@@ -122,7 +124,8 @@ next steps:
   if (platform === "pi" && !dryRun) {
     console.log(`
 next steps:
-  1. load the plan-graph extension in your pi config (pi-extension/plan-graph.js).
+  1. pi extension: re-run with --pi-extensions ~/.pi/agent/extensions to install plan-graph
+     (auto-discovered as plan-graph/index.ts; restart pi or /reload).
   2. pi model roles (pi/default, pi/smol, pi/slow) must exist in your pi config.`);
   }
 }
@@ -138,7 +141,7 @@ function check() {
       }
     }
   }
-  for (const f of ["plugin/index.js", "pi-extension/plan-graph.js", "skills/ulw-plan/SKILL.md", "opencode.example.jsonc"]) {
+  for (const f of ["plugin/index.js", "pi-extension/index.ts", "pi-extension/lib/graph-tool.mjs", "skills/ulw-plan/SKILL.md", "opencode.example.jsonc"]) {
     if (!fs.existsSync(path.join(pkgRoot, f))) {
       console.error(`missing ${f}`);
       ok = false;

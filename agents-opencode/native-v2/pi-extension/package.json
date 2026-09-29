@@ -1,0 +1,9 @@
+{
+  "name": "pi-plan-graph-extension",
+  "version": "0.2.0",
+  "description": "pi extension (@earendil-works/pi-coding-agent): plan_graph task-DAG tool + subagent delegation guard",
+  "type": "module",
+  "scripts": {
+    "check": "node --check lib/graph-tool.mjs && node --check lib/dag.mjs"
+  }
+}

@@ -3,7 +3,6 @@ name: multimodal-looker
 description: "Reads a referenced local image or PDF and extracts what was asked."
 tools: read
 model: pi/smol
-thinking-level: low
 ---
 You interpret media files that cannot be read as plain text: images, diagrams, screenshots, PDFs.
 

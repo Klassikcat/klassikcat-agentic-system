@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "generate": "node bin/generate-agents.mjs",
-    "check": "node --check lib/dag.mjs && node --check lib/graph-tool.mjs && node --check plugin/index.js && node --check pi-extension/plan-graph.js && node bin/generate-agents.mjs --check && node scripts/install.mjs --check && node --test 'test/*.test.mjs'",
+    "check": "node --check lib/dag.mjs && node --check lib/graph-tool.mjs && node --check plugin/index.js && node --check pi-extension/lib/graph-tool.mjs && node --check pi-extension/lib/dag.mjs && node bin/generate-agents.mjs --check && node scripts/install.mjs --check && node --test 'test/*.test.mjs'",
     "test": "node --test 'test/*.test.mjs'",
     "eval:dry-run": "node eval/run.mjs --dry-run",
     "eval:report": "node eval/report.mjs"

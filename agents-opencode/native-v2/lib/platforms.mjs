@@ -70,14 +70,17 @@ const OPENCODE = {
 };
 
 const PI = {
-  prometheus: { tools: "read, search, find, edit, write", model: "pi/default", thinkingLevel: "high" },
-  explore: { tools: "read, search, find", model: "pi/smol", thinkingLevel: "low" },
-  librarian: { tools: "read, web_search, search, find", model: "pi/smol", thinkingLevel: "low" },
-  metis: { tools: "read, search, find", model: "pi/default", thinkingLevel: "medium" },
-  momus: { tools: "read, search, find", model: "pi/default", thinkingLevel: "medium" },
-  oracle: { tools: "read, search, find", model: "pi/slow", thinkingLevel: "high" },
-  "multimodal-looker": { tools: "read", model: "pi/smol", thinkingLevel: "low" },
-  builder: { tools: "read, search, find, edit, write, bash, lsp", model: "pi/default", thinkingLevel: "medium" },
+  // pi (@earendil-works/pi-coding-agent) agent schema, read by the subagent
+  // extension from ~/.pi/agent/agents: name, description, tools (csv),
+  // model, fallbackModels (csv). No OMP-only fields (thinking-level etc).
+  prometheus: { tools: "read, search, find, edit, write", model: "pi/default" },
+  explore: { tools: "read, search, find", model: "pi/smol" },
+  librarian: { tools: "read, web_search, search, find", model: "pi/smol" },
+  metis: { tools: "read, search, find", model: "pi/default" },
+  momus: { tools: "read, search, find", model: "pi/default" },
+  oracle: { tools: "read, search, find", model: "pi/slow" },
+  "multimodal-looker": { tools: "read", model: "pi/smol" },
+  builder: { tools: "read, search, find, edit, write, bash", model: "pi/default" },
 };
 
 export const ROSTER = [
@@ -142,7 +145,6 @@ export const PLATFORMS = {
         `description: ${yamlQuote(meta.descriptionPi)}`,
         `tools: ${grant.tools}`,
         `model: ${grant.model}`,
-        `thinking-level: ${grant.thinkingLevel}`,
         "---",
         "",
       ].join("\n");

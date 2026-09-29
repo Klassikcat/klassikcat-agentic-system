@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import plugin from "../plugin/index.js";
-import piExtension from "../pi-extension/plan-graph.js";
+
+const PKG = path.resolve(import.meta.dirname, "..");
 
 function mockCtx() {
   const tools = new Map();
@@ -131,62 +134,22 @@ test("opencode plugin: child sessions cannot delegate; task tool also guarded", 
   await cleanup();
 });
 
-test("pi extension: registers tool and blocks unbound delegation", async () => {
-  const registered = [];
-  const handlers = {};
-  const pi = {
-    setLabel() {},
-    zod: {
-      // Minimal zod stand-in supporting the builder chaining pi's real zod uses.
-      object: (shape) => ({ shape, __zod: true }),
-      array: (item) => ({ item, __zod: true, optional() { return this; } }),
-      enum: (vals) => ({ vals, __zod: true, optional() { return this; } }),
-      string: () => ({ __zod: true, optional() { return this; } }),
-    },
-    registerTool(def) {
-      registered.push(def);
-    },
-    on(name, fn) {
-      handlers[name] = fn;
-    },
-  };
-  piExtension(pi);
-
-  assert.equal(registered.length, 1);
-  assert.equal(registered[0].name, "plan_graph");
-  const tool = registered[0];
-
-  // tool works end-to-end through the shared core
-  const def = await tool.execute("call1", {
-    op: "define", parent_agent: "build",
-    tasks: [{ id: "a", title: "T", agent: "explore", depends_on: [] }],
-  });
-  assert.equal(def.isError, false);
-  assert.ok(JSON.parse(def.content[0].text).ok);
-
-  // guarded spawn without token is refused via yield
-  let yielded = null;
-  await handlers.tool_call(
-    { toolName: "subagent", arguments: { agent: "explore", prompt: "no token" }, yield: (m) => (yielded = m) },
-    {},
-  );
-  assert.match(yielded, /missing task binding token/);
-
-  // bound delegation marks in-flight; duplicate refused
-  yielded = null;
-  await handlers.tool_call(
-    { toolName: "subagent", arguments: { agent: "explore", prompt: "x [graph:a@r1]" }, yield: (m) => (yielded = m) },
-    {},
-  );
-  assert.equal(yielded, null);
-  await handlers.tool_call(
-    { toolName: "subagent", arguments: { agent: "explore", prompt: "again [graph:a@r1]" }, yield: (m) => (yielded = m) },
-    {},
-  );
-  assert.match(yielded, /already in_flight/);
-
-  // non-delegation tools pass through untouched
-  let pass = true;
-  await handlers.tool_call({ toolName: "read", arguments: { path: "x" }, yield: () => (pass = false) }, {});
-  assert.equal(pass, true);
+test("pi extension matches the current pi extension shape", async () => {
+  const ts = fs.readFileSync(path.join(PKG, "pi-extension/index.ts"), "utf8");
+  // Current pi (@earendil-works/pi-coding-agent): typed ExtensionAPI + typebox
+  assert.match(ts, /@earendil-works\/pi-coding-agent/);
+  assert.match(ts, /from "typebox"/);
+  assert.match(ts, /pi\.registerTool\(/);
+  assert.match(ts, /name: "plan_graph"/);
+  // Guard: subagent tool, single + tasks/chain modes, pi-style block result.
+  assert.match(ts, /pi\.on\("tool_call"/);
+  assert.match(ts, /"subagent"/);
+  assert.match(ts, /\["tasks", "chain"\]/);
+  assert.match(ts, /block: true/);
+  // Self-contained: ships its own copy of the DAG core.
+  for (const f of ["graph-tool.mjs", "dag.mjs"]) {
+    const copy = fs.readFileSync(path.join(PKG, "pi-extension/lib", f), "utf8");
+    const core = fs.readFileSync(path.join(PKG, "lib", f), "utf8");
+    assert.equal(copy, core, `pi-extension/lib/${f} drifted from lib/${f}; re-copy`);
+  }
 });

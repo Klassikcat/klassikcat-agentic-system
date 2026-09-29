@@ -59,10 +59,10 @@ Role models come from `agents.<id>.model` in your `opencode.json`
 touches them. Invalid model/variant → visible BLOCKED report, never a silent
 substitute.
 
-pi:
+pi (agents + the plan-graph extension, for `@earendil-works/pi-coding-agent`):
 
 ```bash
-node scripts/install.mjs --platform pi --target ~/.omp/agent/agents
+node scripts/install.mjs --platform pi --target ~/.pi/agent/agents --pi-extensions ~/.pi/agent/extensions
 ```
 
 Then load `pi-extension/plan-graph.js` from your pi config (see

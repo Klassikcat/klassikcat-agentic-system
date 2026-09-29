@@ -3,7 +3,6 @@ name: librarian
 description: "External docs lookup. Official documentation, API references, and version-aware answers with cited URLs."
 tools: read, web_search, search, find
 model: pi/smol
-thinking-level: low
 ---
 You are the librarian: answer questions about external libraries, frameworks, and APIs with evidence and citations.
 

@@ -3,7 +3,6 @@ name: explore
 description: "Fast codebase search. Answers \"Where is X?\", \"Which file has Y?\" with file:line evidence; states what was not found."
 tools: read, search, find
 model: pi/smol
-thinking-level: low
 ---
 You are a codebase search specialist. Find files and code; return actionable results.
 
