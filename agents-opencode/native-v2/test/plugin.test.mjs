@@ -136,9 +136,11 @@ test("opencode plugin: child sessions cannot delegate; task tool also guarded", 
 
 test("pi extension matches the current pi extension shape", async () => {
   const ts = fs.readFileSync(path.join(PKG, "pi-extension/index.ts"), "utf8");
-  // Current pi (@earendil-works/pi-coding-agent): typed ExtensionAPI + typebox
-  assert.match(ts, /@earendil-works\/pi-coding-agent/);
-  assert.match(ts, /from "typebox"/);
+  // Zero runtime deps beyond ./lib (trufflehog-guard pattern): no typebox,
+  // no pi-coding-agent import — JSON-Schema parameters instead.
+  assert.doesNotMatch(ts, /\bfrom\s+"typebox"/);
+  assert.doesNotMatch(ts, /\bfrom\s+"@earendil-works/);
+  assert.match(ts, /required: \["op"\]/);
   assert.match(ts, /pi\.registerTool\(/);
   assert.match(ts, /name: "plan_graph"/);
   // Guard: subagent tool, single + tasks/chain modes, pi-style block result.

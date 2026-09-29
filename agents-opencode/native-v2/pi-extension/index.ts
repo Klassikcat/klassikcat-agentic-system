@@ -2,57 +2,59 @@
  * plan_graph for pi (@earendil-works/pi-coding-agent)
  *
  * Task-DAG planner: registers the `plan_graph` tool (define/update/ready/
- * render/inspect/record_result) backed by the shared DAG core, and guards the
- * `subagent` tool so a delegation only runs when it is bound to a ready graph
- * node via its binding token ([graph:<task>@r<rev>]).
+ * render/inspect/record_result) backed by the shared DAG core, and guards
+ * the `subagent` tool so a delegation only runs when it is bound to a ready
+ * graph node via its binding token ([graph:<task>@r<rev>]).
+ *
+ * Zero runtime imports beyond the bundled ./lib — same self-contained
+ * pattern as trufflehog-guard. TypeBox parameters are plain JSON Schema
+ * objects (TypeBox compiles to the same shape), so no typebox dependency.
  *
  * Install: copy this directory into ~/.pi/agent/extensions/plan-graph/
  * (auto-discovered as index.ts), then restart pi or run /reload.
- * The ./lib copies ship with the extension; re-copy after editing
- * ../../lib in the repo.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
-import { GraphStore, runOp, token } from "./lib/graph-tool.mjs";
+import { GraphStore, runOp } from "./lib/graph-tool.mjs";
 
 const SESSION = "pi-session";
 
-const TaskNode = Type.Object({
-	id: Type.String({ description: "Unique task id" }),
-	title: Type.String({ description: "Short task title" }),
-	agent: Type.String({ description: "Delegation target: explore | librarian | metis | momus | oracle | multimodal-looker | builder" }),
-	depends_on: Type.Array(Type.String(), { description: "Task ids that must record results first" }),
-	scope: Type.Optional(Type.String({ description: "What the task touches" })),
-	write_paths: Type.Optional(Type.Array(Type.String(), { description: "Files/dirs this task may write; used for conflict checks" })),
-	deliverable: Type.Optional(Type.String({ description: "What the parent receives" })),
-	acceptance: Type.Optional(Type.String({ description: "How completion is judged" })),
-});
-
-const PlanGraphParams = Type.Object({
-	op: Type.Union(
-		[
-			Type.Literal("define"),
-			Type.Literal("update"),
-			Type.Literal("ready"),
-			Type.Literal("render"),
-			Type.Literal("inspect"),
-			Type.Literal("record_result"),
-		],
-		{
+// JSON Schema (TypeBox-compatible) for the plan_graph parameters.
+const PLAN_GRAPH_PARAMS = {
+	type: "object",
+	properties: {
+		op: {
+			type: "string",
+			enum: ["define", "update", "ready", "render", "inspect", "record_result"],
 			description:
 				"define: register/replace the task DAG. update: add/modify nodes (bumps revision). ready: nodes delegatable now. render: text DAG + mermaid. inspect: full state. record_result: record a parent-verified outcome for an in-flight node.",
 		},
-	),
-	tasks: Type.Optional(Type.Array(TaskNode, { description: "Task nodes for define/update" })),
-	task_id: Type.Optional(Type.String({ description: "record_result: the in-flight task id" })),
-	status: Type.Optional(Type.Union([Type.Literal("completed"), Type.Literal("failed")]), { description: "record_result outcome" }),
-	evidence: Type.Optional(Type.String({ description: "record_result: what the parent verified and how (required for completed)" })),
-	parent_agent: Type.Optional(Type.String({ description: "define: agent owning this graph (prometheus or the executing main)" })),
-});
+		tasks: {
+			type: "array",
+			description: "Task nodes for define/update",
+			items: {
+				type: "object",
+				properties: {
+					id: { type: "string", description: "Unique task id" },
+					title: { type: "string", description: "Short task title" },
+					agent: { type: "string", description: "Delegation target: explore | librarian | metis | momus | oracle | multimodal-looker | builder" },
+					depends_on: { type: "array", items: { type: "string" }, description: "Task ids that must record results first" },
+					scope: { type: "string", description: "What the task touches" },
+					write_paths: { type: "array", items: { type: "string" }, description: "Files/dirs this task may write; used for conflict checks" },
+					deliverable: { type: "string", description: "What the parent receives" },
+					acceptance: { type: "string", description: "How completion is judged" },
+				},
+				required: ["id", "title", "agent", "depends_on"],
+			},
+		},
+		task_id: { type: "string", description: "record_result: the in-flight task id" },
+		status: { type: "string", enum: ["completed", "failed"], description: "record_result outcome" },
+		evidence: { type: "string", description: "record_result: what the parent verified and how (required for completed)" },
+		parent_agent: { type: "string", description: "define: agent owning this graph (prometheus or the executing main)" },
+	},
+	required: ["op"],
+};
 
-export default function planGraph(pi: ExtensionAPI) {
-	pi.setLabel?.("Plan Graph");
+export default function planGraph(pi) {
 	const store = new GraphStore();
 
 	pi.registerTool({
@@ -60,12 +62,11 @@ export default function planGraph(pi: ExtensionAPI) {
 		label: "Plan Graph",
 		description:
 			"Task DAG planner: register the delegation graph before spawning subagents, then delegate only ready nodes. Embed each node's binding token ([graph:<task>@r<rev>]) in the delegation prompt.",
-		parameters: PlanGraphParams,
+		parameters: PLAN_GRAPH_PARAMS,
 		async execute(_toolCallId, params) {
 			const result = runOp(store, SESSION, params.op, params, params.parent_agent);
-			const text = JSON.stringify(result, null, 2);
 			return {
-				content: [{ type: "text", text }],
+				content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
 			};
 		},
 	});
@@ -103,6 +104,3 @@ export default function planGraph(pi: ExtensionAPI) {
 		return undefined;
 	});
 }
-
-// Re-exported for smoke tests: same binding-token format as the OpenCode plugin.
-export { token };
