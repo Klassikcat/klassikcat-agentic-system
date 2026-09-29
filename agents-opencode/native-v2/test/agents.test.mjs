@@ -47,7 +47,7 @@ test("opencode agents: modes, read-only denies, builder grants, no models in md"
       }
       assert.match(fm, /action: subagent[\s\S]*?effect: deny/m, `${id} must deny subagent`);
     }
-    assert.doesNotMatch(fm, /^model:/m, `models live in opencode.json (agents.<id>.model), not ${id}.md`);
+    assert.match(fm, /^model: \S+\/\S+/m, `${id}.md carries its default model (JSON agents.<id>.model overrides in stock setups)`);
     assert.match(fm, /^description: \S/m, `${id} needs a description`);
   }
 });

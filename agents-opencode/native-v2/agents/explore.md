@@ -1,6 +1,7 @@
 ---
 description: "undefined"
 mode: subagent
+model: opencode-go/deepseek-v4-flash
 permissions:
   - action: edit
     resource: "*"

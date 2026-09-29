@@ -20,6 +20,7 @@ const READ_ONLY_DENY = [
 const OPENCODE = {
   prometheus: {
     mode: "primary",
+    model: "zai-coding-plan/glm-5.3",
     permissions: [
       // Plan-artifact writes only; broad rules first, exceptions last.
       { action: "edit", resource: "*", effect: "deny" },
@@ -30,30 +31,37 @@ const OPENCODE = {
   },
   explore: {
     mode: "subagent",
+    model: "opencode-go/deepseek-v4-flash",
     permissions: READ_ONLY_DENY,
   },
   librarian: {
     mode: "subagent",
+    model: "opencode-go/deepseek-v4-flash",
     permissions: READ_ONLY_DENY,
   },
   metis: {
     mode: "subagent",
+    model: "openai/gpt-5.6-terra",
     permissions: READ_ONLY_DENY,
   },
   momus: {
     mode: "subagent",
+    model: "openai/gpt-6-astra#high",
     permissions: READ_ONLY_DENY,
   },
   oracle: {
     mode: "subagent",
+    model: "openai/gpt-5.6-terra#xhigh",
     permissions: READ_ONLY_DENY,
   },
   "multimodal-looker": {
     mode: "subagent",
+    model: "openrouter/google/gemini-3.5-flash",
     permissions: READ_ONLY_DENY,
   },
   builder: {
     mode: "subagent",
+    model: "openai/gpt-6-luna#max",
     permissions: [
       { action: "edit", resource: "*", effect: "allow" },
       { action: "subagent", resource: "*", effect: "deny" },
@@ -105,6 +113,10 @@ export const PLATFORMS = {
         "---",
         `description: ${yamlQuote(meta.descriptionOpencode)}`,
         `mode: ${grant.mode}`,
+        // Markdown carries the DEFAULT model so it survives plugins that
+        // rebuild config.agent; opencode.json agents.<id>.model still wins
+        // in a stock setup (config merges after file agents).
+        ...(grant.model ? [`model: ${grant.model}`] : []),
       ];
       if (grant.permissions?.length) {
         lines.push("permissions:");

@@ -1,6 +1,7 @@
 ---
 description: "undefined"
 mode: subagent
+model: openai/gpt-5.6-terra#xhigh
 permissions:
   - action: edit
     resource: "*"

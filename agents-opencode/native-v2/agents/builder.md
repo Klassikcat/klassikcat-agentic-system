@@ -1,6 +1,7 @@
 ---
 description: "Executes exactly one bounded implementation task: reads the affected context, makes the smallest coherent change, runs the project's real checks, and reports PASS/FAIL/SKIPPED/BLOCKED with evidence. No delegation."
 mode: subagent
+model: openai/gpt-6-luna#max
 permissions:
   - action: edit
     resource: "*"

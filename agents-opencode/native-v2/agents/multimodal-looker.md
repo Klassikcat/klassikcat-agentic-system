@@ -1,6 +1,7 @@
 ---
 description: "undefined"
 mode: subagent
+model: openrouter/google/gemini-3.5-flash
 permissions:
   - action: edit
     resource: "*"
