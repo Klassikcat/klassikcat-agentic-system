@@ -281,6 +281,7 @@ async function executeSuite() {
         trial.durationMs = Date.now() - t0;
       }
       results.trials.push(trial);
+      writeResults(results); // survive unexpected death mid-suite
       console.log(`${arm}/${c.id}: ${trial.error ? "ERROR " + trial.error : `${trial.tokens?.input ?? "?"}in/${trial.tokens?.output ?? "?"}out $${(trial.cost ?? 0).toFixed(4)}`}`);
     }
   }
